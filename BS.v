@@ -42,7 +42,7 @@ Notation "x \ y" := (ArrL x y) (at level 40).
 Notation "x / y" := (ArrR x y).
 Notation "x >> y" := (Bound x y) (at level 40).
 Notation "x \\ y" := (GapL x y) (at level 40).
-Notation "x // y" := (GapL x y) (at level 40).
+Notation "x // y" := (GapR x y) (at level 40).
 
 Notation "x || y -- z" := (Tow x y z) (at level 30, format "'//' x  ||  y '//' -- '//' z").
 
