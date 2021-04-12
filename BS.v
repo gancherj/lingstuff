@@ -1,6 +1,6 @@
 Require Import String. Import StringSyntax.
 
-Module Ling. 
+Module BarkerShan. 
 
   Parameter (E : Type).
   Parameter (baseE : string -> E).
@@ -180,6 +180,6 @@ Definition lower2 {a b c : Cat} (x : a || b -- (c || S -- S)) : a || b -- c :=
 (* Listing (55) *)
 Eval compute in (lower (lower2 (lift someone |>> ((lift (lift loves)) <<| lift2 everyone)))).
 
-End Ling.
+End BarkerShan.
 
 

@@ -1,6 +1,6 @@
 
 Require Import String. Import StringSyntax.
-Require Import BS. Import Ling.
+Require Import Ling.BS. Import BarkerShan.
 
 (**** Some experimentation with gaps, covariant readings  *****)
 (*** Everything below here is pretty experimental ***)
