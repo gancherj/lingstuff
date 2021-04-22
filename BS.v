@@ -1,15 +1,16 @@
 Require Import String. Import StringSyntax.
 
-Module BarkerShan. 
+Module Ling. 
 
   Parameter (E : Type).
-  Parameter (baseE : string -> E).
-  Parameter (baseVP : string -> E -> E -> Prop).
-  Parameter (baseVP_intr : string -> E -> Prop).
+  Parameter (Ec : string -> E).
+  Parameter (EET : string -> E -> E -> Prop).
+  Parameter (ET : string -> E -> Prop).
   Parameter (baseAdj : string -> E -> Prop).
   Parameter (Wants : Prop -> E -> Prop).
   Parameter (Knows : Prop -> E -> Prop).
-  Parameter (Mother : E -> E).
+  Parameter (know : E -> Prop -> Prop).
+  Parameter (Mother : E -> E).      
 
   (* Syntactic categories. *)
   Inductive Cat :=
@@ -42,60 +43,146 @@ Notation "x \ y" := (ArrL x y) (at level 40).
 Notation "x / y" := (ArrR x y).
 Notation "x >> y" := (Bound x y) (at level 40).
 Notation "x \\ y" := (GapL x y) (at level 40).
-Notation "x // y" := (GapR x y) (at level 40).
+Notation "x // y" := (GapL x y) (at level 40).
 
 Notation "x || y -- z" := (Tow x y z) (at level 30, format "'//' x  ||  y '//' -- '//' z").
 
+Definition john : DP := (Ec "john").
 
-Definition john : DP := (baseE "john").
-
-(* Lift is like the monadic return. *)
+(* Lift is like the monadic return. *) 
+(* c is local type, a is scope type. *)
 Definition lift {a : Cat} {c : Cat} (x : c) : a || a -- c :=
   (fun k => k x).
 
+(* In (b || a -- c), c is the local type, a is the scope,
+   and b is the scope result. *)
+
+(* Forward Geach type raising.
+  NB this uses Bar-Hillel notation for leftward slashes. *)
+Definition geach {a : Cat} {c : Cat} (x : c) : (a / (c \ a)) :=
+  (fun k => k x).
+
+(* Forward and backward application, with the order of arguments
+  following the surface order. *)
+Definition appf {a b: Cat} (y : (a / b)) (x : b) : a :=
+  (y x).
+
+Definition appb {a b: Cat} (x : b) (y : (b \ a)) : a :=
+  (y x).
+
+
+(* Collapse tower at S. The result is the scope result b. *) 
 Definition lower {a : Cat} (x : a || S -- S) : a := x id.
 
+(* Apply locally, and compose at the continuation level.
+  The order of arguments is the surface order. *)
 Definition cleft {a b c x y : Cat}
            (f : a || b -- x)
            (g : b || c -- (x \ y)) : a || c -- y :=
   (fun k => f (fun x => g (fun y => k (y x)))).
 
-Definition cright {a b c x y : Cat} (f : a || b -- (x / y)) (g : b || c -- y) : a || c -- x :=
-    (fun k => f (fun x => g (fun y => k (x y)))).
+Definition cright {a b c x y : Cat} 
+          (f : a || b -- (x / y)) 
+          (g : b || c -- y) : a || c -- x :=
+    (fun k => f (fun x => g (fun y => k (x y)))). 
 
-Notation "x |> y" := (cleft x y) (at level 41).
-Notation "x <| y" := (cright x y) (at level 41).
 
-Definition VP := (DP \ S) / DP.
+(* Swap the notation from Josh, to match notation in categorial
+   grammar, e.g. Steedman. Now the arrow points at the argument. *)
+Notation "x <| y" := (cleft x y) (at level 41).
+Notation "x |> y" := (cright x y) (at level 41).
 
-Definition mkVP (s : string) : VP := baseVP s.
-Definition loves : VP := (mkVP "loves").
-Definition mary : DP := (baseE "mary").
+Definition TV := (DP \ S) / DP.
+
+Definition mkTV (s : string) : TV := EET s.
+Definition mary : DP := (Ec "mary").
+
+(* This puts the subject first in the atomic formula (love john mary) *)
+Definition loves : TV := fun (y : E) (x : E) => ((mkTV "love") x y).
+
+(* Basic application. *)   
+
+Notation "x :> y" := (appf x y) (at level 40).
+Notation "x <: y" := (appb x y) (at level 40).
+
+Check loves :> mary.
+Check john <: (loves :> mary).
+Eval compute in (john <: (loves :> mary)).
+
+Check (geach john). 
+Check (geach john) : S / (DP \ S).
+Eval compute in ((geach john) : S / (DP \ S)).
+
+Check (geach john) :> (loves :> mary).
+Eval compute in ((geach john) :> (loves :> mary)).
+
+
+(* Continuation quantifiers. *)
 
 Definition everyone : S || S -- DP := fun (k : E -> Prop) =>
-                                        forall x, k x.
+                                        forall x, ET "person" x -> k x.
 
-Definition someone : S || S -- DP := fun k => exists x, k x.
-
-Check (everyone |> (lift loves <| someone)).
-Check (someone |> (lift loves <| everyone)).
+Definition someone : S || S -- DP := fun k => exists x, ET "person" x /\ k x. 
 
 
-Definition to_leave : (DP \ S) := (baseVP_intr "leave" : DP \ S).
+Definition to_leave : (DP \ S) := (ET "leave" : DP \ S).
 
 Definition wants : ((DP \ S) / S) := (Wants : (DP \ S) / S).
 
+
+
+(* Syntax of quantifiers with default scopes. The transitive verb is
+   lifted to a tower in order to combine. *)
+ 
+Check (everyone <| (lift loves |> someone)). 
+Check (someone <| (lift loves |> everyone)). 
+
+
+(* Simple quantifier scope. *)
+
+Eval compute in (lower (everyone <| lift to_leave)).
+
+Check (lift loves) |> someone.
+Check everyone <| ((lift loves) |> someone).
+
+(* The scopes come out in linear order. *)
+
+Eval compute in (lower (everyone <| ((lift loves) |> someone))).
+
+
+(* This one has a variable scope type, which is also the scope
+   result type. *)
+ 
+Check (lift john). 
+
+(* This restricts it. *)
+
+Check (lift john) : S || S -- DP.
+Eval compute in ((lift john) : S || S -- DP).
+
+
 (* Section 1.9 in Barker & Shan *)
 
-Eval compute in (
-                 lower (lift mary |> (lift wants <|
-                                           (everyone |> lift to_leave)))).
+(* This has matrix scope for the quantifier. *) 
 
-Eval compute in (lower (lift mary |> (lift wants <|
-                                           (lift (lower (everyone |> lift to_leave)))))).
+Eval compute in (
+                 lower (lift mary <| (lift wants |>
+                                           (everyone <| lift to_leave)))).
+(* "(lift (lower" unscopes the quantifier. *)
+
+Eval compute in (lower (lift mary <| (lift wants |>
+                                           (lift (lower (everyone <| lift to_leave)))))).
+
+(* This is equivalent to the above, without tower in the higher part of the derivation. *)
+
+Eval compute in (mary <: (wants :> (lower (everyone <| lift to_leave)))).
 
 
 (***  Binding  ***)
+
+(* The operator bind applies to a quantifier that takes scope at b,
+  and creates one that takes scope at DP >> b).
+  The latter is a phrase where a pronoun such as 'he' has just been bound. *)
 
 Definition bind {a b : Cat}
   (x : a || b -- DP) :
@@ -103,10 +190,13 @@ Definition bind {a b : Cat}
   fun k => x (fun e => k e e).
 
 
+(* Local DP that takes scope at S to give DP >> S, which binds
+   variable in the position of the pronoun. *)
+
 Definition he : (DP >> S) || S -- DP := fun k => k.
 
 (* Beginning of Chapter 2 in Barker & Shan, listing (28) *)
-Eval compute in (lower (he |> lift to_leave)).
+Eval compute in (lower (he <| lift to_leave)).
 
 Definition mother : (DP \ DP) := (Mother : DP \ DP).
 
@@ -114,22 +204,22 @@ Definition mother : (DP \ DP) := (Mother : DP \ DP).
 (* Listing 31 *)
 (* Everyone loves his mother *)
 Eval compute in (lower (
-                     bind everyone |>
-                     (lift loves <| (he |> lift mother)))).
+                     bind everyone <|
+                     (lift loves |> (he <| lift mother)))).
 
 
 (* Listing 44, from Chapter 3 *)
 (* Someone entered. He left *)
-Definition and : (S \ S) / S := fun p1 p2 => p1 /\ p2.
+Definition and : (S \ S) / S := fun p2 p1 => p1 /\ p2.
 
-Definition entered : DP \ S := baseVP_intr "enter".
-Definition left : DP \ S := baseVP_intr "left".
+Definition entered : DP \ S := ET "enter".
+Definition left : DP \ S := ET "left".
 
 Eval compute in (lower (
-                     (bind someone |> lift entered)
-                       |>
-                       (lift and <|
-                             (he |> lift left))
+                     (bind someone <| lift entered)
+                       <|
+                       (lift and |>
+                             (he <| lift left))
                              
                 )).
 
@@ -163,13 +253,21 @@ Defined.
 
 
 (* Listing 52, chapter 4 of Barker & Shan *)
-Notation "x |>> y" := (cleft2 x y) (at level 41).
-Notation "x <<| y" := (cright2 x y) (at level 41).
+
+(* Ambiguous notation resolved by types? 
+Notation "x <|> y" := (cleft2 x y) (at level 41).
+Notation "x <|> y" := (cright2 x y) (at level 41). *)
+
+Notation "x ||> y" := (cright2 x y) (at level 41).
+
+Notation "x <|| y" := (cleft2 x y) (at level 41).
 
 Eval compute in (lift someone).
 
 
 (* Discussion around listing (54) *)
+(* lift2 lifts a tower, e.g. quantifier, to a double tower. *)
+
 Definition lift2 {s a b c : Cat} (x : a || b -- c) : a || b -- (s || s -- c) :=
   fmap lift x.
 
@@ -178,8 +276,9 @@ Definition lower2 {a b c : Cat} (x : a || b -- (c || S -- S)) : a || b -- c :=
 
 (* Inverse scope by doing alternative lift / lowers *)
 (* Listing (55) *)
-Eval compute in (lower (lower2 (lift someone |>> ((lift (lift loves)) <<| lift2 everyone)))).
+Check (lower (lower2 (lift someone <|| ((lift (lift loves)) ||> lift2 everyone)))).
+Eval compute in (lower (lower2 (lift someone <|| ((lift (lift loves)) ||> lift2 everyone)))).
 
-End BarkerShan.
+End Ling.
 
 
