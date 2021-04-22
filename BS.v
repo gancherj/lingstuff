@@ -20,6 +20,7 @@ Module Ling.
   | Bound : Cat -> Cat -> Cat
   | GapL : Cat -> Cat -> Cat
   | GapR : Cat -> Cat -> Cat
+  | Focus : Cat -> Cat -> Cat
   | Tow : Cat -> Cat -> Cat -> Cat.
 
   (* Mapping of syntactic categories to semantic types. *)
@@ -33,6 +34,7 @@ Module Ling.
     | GapL a b => interp a -> interp b
     | GapR a b => interp b -> interp a
     | Bound x y => interp x -> interp y
+    | Focus a b => interp a * (interp a -> interp b)
     | Tow a b c => (interp c -> interp b) -> interp a
                                                     end.
 
