@@ -17,13 +17,9 @@ Notation "x [ y ]" := (Focus y x) (at level 30, format "x [ y ]").
 Definition focus {a b : Cat} (x : b) : a[b] || a -- b := fun (k : b -> a) => (x, k).
 
 
-Definition only {c d : Cat} : S || S[c] -- (d / d).
-  simpl.
-  intros F.
-  refine (let '(x, k) := (F _) in forall z, k z -> z = x).
-  apply id.
-Defined.
-  
+Definition only {c d : Cat} : S || S[c] -- (d / d) :=
+  fun F => let '(x, k) := F id in forall z, k z -> z = x.
+
 (* John bought lunch. *)
 Check john.
 Definition bought := mkTV "bought".
