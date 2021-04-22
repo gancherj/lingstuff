@@ -32,9 +32,16 @@ Eval compute in (lower (lift john <| (lift bought |> lift lunch))).
 
 Eval compute in (lower (lift john <| ((only |> focus bought) |> lift lunch))).
 
-(* John bought only LUNCH *)
+(* John only bought LUNCH *)
+
+Eval compute in (lower (lift john <| (only |> lift bought |> focus lunch))).
+
+(* only can be moved around: John bought only LUNCH *)
 
 Eval compute in (lower (lift john <| (lift bought |> (only |> focus lunch)))).
+
+(* Currently "JOHN only bought lunch" doesn't work, since only is to the right of JOHN *)
+
 
 (* only JOHN bought lunch *)
 
