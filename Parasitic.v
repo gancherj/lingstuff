@@ -112,6 +112,9 @@ is a tower.
  
 (* TODO: generalize to DP \ DP \ S, .... *)
 
+(* TODO: generalize ant to apply to a tower, not just DP \ S *)
+(* allow ant to apply to not just S on the left, but like DP >> S *)
+
 Definition ant (f : DP \ S) : (S || (S[DP \ S] >> S) -- S)|| S -- (DP \ S) :=
     fun c => (fun k =>
        k (c f)
@@ -171,3 +174,25 @@ Eval compute in compositional_version'.
 Goal john_kissed_ben_and_ALICE_F_did <-> compositional_version'.
   firstorder.
 Qed.
+
+(* TODO's:
+
+   - Generalize to other variable versions, 
+       NP:
+       "A short man ate ice cream, and a TALL one did as well."
+
+       no variables:
+       "John praised his mother, and BEN praised his mother too."
+
+   - Enforce only structured anaphors:
+      - maybe disallow BIND on (DP \ S)? And only allow structured anaphoric bind
+      - block plain VP anaphors across S's
+           - Maybe add a typeclass constraint on cleft/cright (|> / <|) that blocks this propogation
+
+   - Do covariance / sloppy identity in this framework
+      - covariance:
+        ARI knows he is muddy, but ben doesn't know this.
+        -> ben doesn't know ben is muddy
+        -> ben doesn't know ari is muddy
+
+*)
