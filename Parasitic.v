@@ -130,8 +130,11 @@ S
 
 *)
 
+Definition john_kissed_ben_and_ALICE_F_did := 
+ lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> ALICE_F_did)). 
 
-Eval compute in lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> ALICE_F_did)). 
+Eval compute in john_kissed_ben_and_ALICE_F_did.
+
 (*
      = (eet "kiss" (e "john") (e "ben") /\
         alt (eet "kiss" (e "john") (e "ben"))
@@ -147,37 +150,17 @@ the next step.
 It should be done in a way that 'did' contributes a simple VP antecedent, or one with one or more pronouns.
 
 *) 
- 
 
-Check (foc alice) <| (lift (kissed :> ben)). 
-(*
-(
- (S >> S) || S
- --
- S) || S
---
-S
+Definition did_x : (S[DP \ S] >> S) || S -- (DP \ S) :=
+  fun (k : (E -> Prop) -> Prop) (* The continuation *)
+      (ana : (E -> Prop) * ((E -> Prop) -> Prop)) => (* Structured anaphor *)
+    k (fun x => (* Apply the continuation to .. *)
+         alt ((snd ana) (fst ana)) (fun y : E => (fst ana) y) x /\ (* alt operator*)
+         (fst ana) x). (* and structured anaphor, applied to the argument *)
+             
 
-*)
-Check lower ((foc alice) <| (lift (kissed :> ben))).
-(*
-(S >> S) || S
---
-S
-*)
-Check (foc alice).
-(*
-(
- (S >> S) || S
- --
- S) || S
---
-DP
+Definition compositional_version := lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> (lift alice <| did_x))). 
 
-*)
-
-Eval compute in (foc (alice : DP)) <: (lift (kissed :> ben)).
-
- 
- 
-
+Goal john_kissed_ben_and_ALICE_F_did <-> compositional_version.
+  firstorder. (* They only differ by how /\ is parenthesized *)
+Qed.
