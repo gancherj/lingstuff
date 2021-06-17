@@ -110,6 +110,8 @@ This has the two towers strategy, where the result for the lower tower
 is a tower.
 *)
  
+(* TODO: generalize to DP \ DP \ S, .... *)
+
 Definition ant (f : DP \ S) : (S || (S[DP \ S] >> S) -- S)|| S -- (DP \ S) :=
     fun c => (fun k =>
        k (c f)
@@ -150,23 +152,6 @@ the next step.
 It should be done in a way that 'did' contributes a simple VP antecedent, or one with one or more pronouns.
 
 *) 
-
-(* **** alt logic in did  **** *)
-Definition did_x : (S[DP \ S] >> S) || S -- (DP \ S) :=
-  fun (k : (E -> Prop) -> Prop) (* The continuation *)
-      (ana : (E -> Prop) * ((E -> Prop) -> Prop)) => (* Structured anaphor *)
-    k (fun x => (* Apply the continuation to .. *)
-         alt ((snd ana) (fst ana)) (fun y : E => (fst ana) y) x /\ (* alt operator*)
-         (fst ana) x). (* and structured anaphor, applied to the argument *)
-             
-Definition compositional_version := lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> (lift alice <| did_x))). 
-
-Goal john_kissed_ben_and_ALICE_F_did <-> compositional_version.
-  firstorder. (* They only differ by how /\ is parenthesized *)
-Qed.
-
-
-(* **** alt logic in alice **** *)
 
 Definition did : ((DP \ S) >> S) || S -- (DP \ S) := fun k => k.
 
