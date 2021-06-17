@@ -151,6 +151,7 @@ It should be done in a way that 'did' contributes a simple VP antecedent, or one
 
 *) 
 
+(* **** alt logic in did  **** *)
 Definition did_x : (S[DP \ S] >> S) || S -- (DP \ S) :=
   fun (k : (E -> Prop) -> Prop) (* The continuation *)
       (ana : (E -> Prop) * ((E -> Prop) -> Prop)) => (* Structured anaphor *)
@@ -158,9 +159,30 @@ Definition did_x : (S[DP \ S] >> S) || S -- (DP \ S) :=
          alt ((snd ana) (fst ana)) (fun y : E => (fst ana) y) x /\ (* alt operator*)
          (fst ana) x). (* and structured anaphor, applied to the argument *)
              
-
 Definition compositional_version := lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> (lift alice <| did_x))). 
 
 Goal john_kissed_ben_and_ALICE_F_did <-> compositional_version.
   firstorder. (* They only differ by how /\ is parenthesized *)
+Qed.
+
+
+(* **** alt logic in alice **** *)
+
+Definition did : ((DP \ S) >> S) || S -- (DP \ S) := fun k => k.
+
+(* FOC turns a structured anaphor into a regular one, adding the alt operator along the way. *)
+
+Definition FOC (a : DP) : (S[DP \ S] >> S) || ((DP \ S) >> S) -- DP :=
+  fun (k : DP -> (DP \ S) >> S)
+      (ana : S[DP \ S]) =>
+    k a (fst ana) /\
+    alt ((snd ana) (fst ana)) (fun y => (fst ana) y) a.
+
+Check (FOC alice <| did).
+Definition compositional_version' := lower ((lower ((lift john) <| (ant (kissed ben)))) <| ((lift and) |> (FOC alice <| did))). 
+
+Eval compute in compositional_version'.
+
+Goal john_kissed_ben_and_ALICE_F_did <-> compositional_version'.
+  firstorder.
 Qed.
