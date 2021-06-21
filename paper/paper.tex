@@ -1,0 +1,28 @@
+\documentclass{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{minted}
+
+\begin{document}
+\title{A Coq Library for Continuation Towers: ...}
+\author{Mats Rooth \\ Cornell University \and Joshua Gancher \\ Cornell University}
+
+\maketitle
+
+\begin{abstract}
+    \begin{itemize}
+        \item Continuations are used to model various natural language phenomena
+        \item However, continuation-based analyses grow in complexity very fast
+        \item We propose using a dependently-typed interactive theorem prover (here, Coq)
+        in order to enable scalable analyses
+        \item Using the Coq framework, we present new continuation-based analyses of various phenomena:
+        focus interpretation, sloppy identity, and contravariance
+    \end{itemize}
+\end{abstract}
+
+\begin{minted}[fontsize=\footnotesize, linenos]{coq}
+    Inductive tst := tst.
+\end{minted}
+
+
+\end{document}
