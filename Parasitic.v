@@ -118,7 +118,9 @@ is a tower.
 Definition ant (f : DP \ S) : (S || (S[DP \ S] >> S) -- S)|| S -- (DP \ S) :=
     fun c => (fun k =>
        k (c f)
-         (f, fun a : E -> Prop => (c a))).
+         (f, c)).
+
+
 
 Eval compute in lower ((lift john) <| (ant (kissed ben))).
 (*
@@ -194,5 +196,7 @@ Qed.
         ARI knows he is muddy, but ben doesn't know this.
         -> ben doesn't know ben is muddy
         -> ben doesn't know ari is muddy
+
+
 
 *)

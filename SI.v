@@ -23,89 +23,12 @@ Definition arm : DP := e "arm".
 Definition bob : DP := e "bob".
 
 (* strict reading *)
-Eval compute in (lower ((lower (bind (lift john) <| ant3 (lift scratched |> (his |> lift arm))))
+Eval compute in (lower ((lower (bind (lift john) <| ant1 (lift scratched |> (his |> lift arm))))
          <| (lift and |> (FOC bob <| did)))).
 
 
 (* sloppy reading *)
 
-Eval compute in (lower ((lower (lift john <| (ant4 (fill_dp (lift scratched |> (his |> lift arm)))))) <| (lift and |> (FOC bob <| did)))).
+Eval compute in (lower ((lower (lift john <| (ant0 (fill_dp (lift scratched |> (his |> lift arm)))))) <| (lift and |> (FOC bob <| did)))).
 
-
-
-
-
-
-
-
-
-
-
-
-(* Generalized bind *)
-Definition gbind {a b c : Cat} (x : a || b -- c) : a || (c >> b) -- c :=
-  fun k => x (fun e => k e e).
-
-
-
-Definition john_scratched_his_arm :=
-  lower (bind (lift john) |> (lift scratched <| (his <| lift arm))).
-
-Eval compute in john_scratched_his_arm.
-
-Definition did_too : ((DP \ S) >> S) || S -- (DP \ S) := fun k => k.
-
-Definition bob : DP := baseE "bob".
-
-(* Strict reading *)
-Eval compute in
-    (lower
-            (bind (lift john) |>
-             gbind (lift scratched <| (his <| lift arm)) |>
-             (lift and <|
-                   (lift bob |> did_too)))).
-
-
-(* Scratched his arm as an intransitive VP *)
-(* TODO: how to derive? *)
-Definition scratched_his_arm' : S || S -- (DP \ S) :=
-  (fun k => k (fun x => baseVP "scratched" (Of x (baseE "arm")) x)).
-
-(* Sloppy reading *)
-Eval compute in (lower ((lift john |> gbind (scratched_his_arm')) |> (lift and <| (lift bob |> did_too)))).
-
-
-
-
-Definition gap {a b : Cat} : (a \\ b) || b -- a := fun x => x.
-
-(* Maybe with gaps, to introduce abstraction *)
-(* Gaps = hypothetical reasoning *)
-
-Definition cleft_gap {a b c x y : Cat}
-           (f : a || b -- x)
-           (g : b || c -- (x \\ y)) : a || c -- y :=
-  (fun k => f (fun x => g (fun y => k (y x)))).
-
-Definition cright_gap {a b c x y : Cat} (f : a || b -- (x // y)) (g : b || c -- y) : a || c -- x :=
-    (fun k => f (fun x => g (fun y => k (x y)))).
-
-Notation "x |g> y" := (cleft_gap x y) (at level 41).
-Notation "x <g| y" := (cright_gap x y) (at level 41).
-
-
-Definition john_scratched_his_arm' : S || ((DP \\ S) >> S) -- S :=
-  (lift john |g> (gbind (lift (lower (bind gap |> (lift scratched <| (his <| lift arm))))))).
-
-Definition did_too_gap : ((DP \\ S) >> S) || S -- (DP \\ S) := fun k => k.
-
-(*
-        1. Remember "HOLE scratched his arm"
-        2. Apply John to the above sentence
-        3. Apply bob to the above sentence
-*)
-
-(* Sloppy reading, redux *)
-Eval compute in (lower (john_scratched_his_arm' |>
-                        (lift and <| (lift bob |g> did_too_gap)))).
 

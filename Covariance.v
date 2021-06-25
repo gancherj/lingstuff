@@ -33,31 +33,30 @@ Defined.
 (* k : S -> (S[DP \ S] >> S) *)
 
 (* First attempt, down't work out. *)
-Definition ant2 (f : (DP >> S) || S -- (DP \ S)) :
+Definition ant_bad (f : (DP >> S) || S -- (DP \ S)) :
   ((DP >> S) || (S[DP \ S] >> S) -- S) || S -- (DP \ S).
   intros c k X.
   apply (f (fun v => k (c v) (v, c)) X).
 Defined.
 
 (* The DP >> _ part is too high in the tower to bind easily. *)
-Check (ant2 (lift knows |> (he <| (lift is |> lift muddy)))).
+Check (ant_bad (lift knows |> (he <| (lift is |> lift muddy)))).
 
 
 
-
-Definition ant3 (f : (DP >> S) || S -- (DP \ S)) :
+(* ant with towers, one variable *)
+Definition ant1 (f : (DP >> S) || S -- (DP \ S)) :
   (DP >> (S || (S[DP \ S] >> S) -- S)) || S -- (DP \ S).
   intros k x K.
-  simpl in *.
   refine (f (fun v => K (k v) (v, k)) x).
 Defined.
 
 (* This version lowers the DP >> _ part to the ordinary binding position. *)
-Check (ant3 (lift knows |> (he <| (lift is |> lift muddy)))).
+Check (ant1 (lift knows |> (he <| (lift is |> lift muddy)))).
 
 
 (* invariant *)
-Eval compute in (lower (lower (bind (lift ari) <| ant3 (lift knows |> (he <| (lift is |> lift muddy)))) <| (lift and |> (FOC alice <| did)))).
+Eval compute in (lower (lower (bind (lift ari) <| ant1 (lift knows |> (he <| (lift is |> lift muddy)))) <| (lift and |> (FOC alice <| did)))).
 
 
 (* *** covariant  *** *)
@@ -71,12 +70,34 @@ Definition fill_dp (f : (DP >> S) || S -- (DP \ S)) : S || S -- (DP \ S).
   apply (k (fun x => f (fun v => v x) x)).
 Defined.
 
-(* same as ant3, but no variables *)
-Definition ant4 (f : S || S -- (DP \ S)) :
+(* same as ant1, but no variables *)
+Definition ant0 (f : S || S -- (DP \ S)) :
   ((S || (S[DP \ S] >> S) -- S)) || S -- (DP \ S).
   intros k K.
   refine (f (fun v => K (k v) (v, k))).
 Defined.
 
+Eval compute in  (lower (lower (lift ari <| (ant0 (fill_dp (lift knows |> (he <| (lift is |> lift muddy)))))) <| (lift and |> (FOC alice <| did)))).
 
-Eval compute in  (lower (lower (lift ari <| (ant4 (fill_dp (lift knows |> (he <| (lift is |> lift muddy)))))) <| (lift and |> (FOC alice <| did)))).
+
+
+
+(** ****   *)
+
+(* two variables *)
+Definition ant2 (f : (DP >> (DP >> S)) || S -- (DP \ S)) :
+  (DP >> (DP >> (S || (S[DP \ S] >> S) -- S))) || S -- (DP \ S).
+  intros k x y K.
+  apply (f (fun v => K (k v) (v, k)) x y).
+Defined.
+
+(* three variables *)
+Definition ant3 (f : (DP >> (DP >> (DP >> S))) || S -- (DP \ S)) :
+  (DP >> (DP >> (DP >> (S || (S[DP \ S] >> S) -- S)))) || S -- (DP \ S).
+  intros k x y z K.
+  apply (f (fun v => K (k v) (v, k)) x y z).
+Defined.
+
+
+
+
