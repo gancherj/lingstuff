@@ -1,5 +1,9 @@
  
 Require Import String. Import StringSyntax.          
+From Ling Require Import BSm2. 
+Import Ling.
+From Ling Require Import Parasitic.
+
 
 (*
 Add LoadPath  "/local/res/josh/coq" as Ling. *)
@@ -15,85 +19,64 @@ Add LoadPath "CODEHOME/cpdt/src" as Cpdt .
  /Applications/CoqIDE_8.13.1.app/Contents/Resources/bin/coqc -Q . Ling -vos BSm.v 
 *)
 
-From Ling Require Import BSm. 
+Definition knows : ((DP \ S) / S) := Knows. 
 
-Import Ling.
+Check ant.
+Check (lift knows |> (he <| (lift is |> lift muddy))).
 
-(**** Some experimentation with gaps, covariant readings  *****)
-(*** Everything below here is pretty experimental ***)
-
-
-(* Gap is defined for all input and output categories *)
-Definition gap {a b : Cat} : (a \\ b) || b -- a := fun x => x.
-
-(* Simple gaps *)
-Eval compute in (lower (lift john <| (lift loves |> gap))).
-
-
-(* Ari knows he is muddy and Ben knows this *)
-
-(* muddy, copulatives *)
-
-Definition muddy : AP := ET "muddy".
-Definition is : (DP \ S) / AP := fun x y => x y.
-Eval compute in (lower (lift john <| (lift is |> lift muddy))).
-
-(* alternatively *)
-Eval compute in john <: (is :>  muddy).
-
-Definition knows : ((DP \ S) / S) := ((fun p => (fun x => know x p)) : (DP \ S) / S).
-
-Check (bind (lift john) <| (lift knows |> (he <| (lift is |> lift muddy)))).
-
-(* alternatively *)
-
-Check (lower (bind (lift john) <| (lift knows |> (he <| lift (is :> muddy))))).
-Eval compute in (lower (bind (lift john) <| (lift knows |> (he <| lift (is :> muddy))))).
-
-(* It comes out as 
-  know (Ec "john") (ET "muddy" (Ec "john")) : S   *)
-
-(* Anaphor for single props *)
-Definition this : (S >> S) || S -- S := fun k => k.
-
-(* Assumes a topic DP and a proposition P with a hole in it for a DP. Applies
-   P to the topic. *)
-Definition this2 : (DP >> ((DP >> S) >> S)) || S -- S.
-  simpl.
-  refine (fun k e p => k (p e)).
+Definition gap : (DP >> S) || (DP >> S) -- DP.
+  intros k x.
+  apply (k x x).
 Defined.
 
-(* Generalized bind *)
-Definition gbind {a b c : Cat} (x : a || b -- c) : a || (c >> b) -- c :=
-  fun k => x (fun e => k e e).
+(* c : (DP \ S) -> S *)
+(* k : S -> (S[DP \ S] >> S) *)
 
-(* The anaphor this2 has a hole, which (bind (lift mary)) captures. *)
+(* First attempt, down't work out. *)
+Definition ant2 (f : (DP >> S) || S -- (DP \ S)) :
+  ((DP >> S) || (S[DP \ S] >> S) -- S) || S -- (DP \ S).
+  intros c k X.
+  apply (f (fun v => k (c v) (v, c)) X).
+Defined.
 
-Check (bind (lift mary) <| (lift knows |> this2)).
-(*
-((DP >> S) >> S) || S
---
-S
-*)
-
-
-Check (gbind (lift ((lower (he <| (lift is |> lift muddy)))))).
+(* The DP >> _ part is too high in the tower to bind easily. *)
+Check (ant2 (lift knows |> (he <| (lift is |> lift muddy)))).
 
 
 
-(* This pull combinator is kind of suspect. Maybe I can fix it with gaps *)
-Definition pull {a b c d : Cat} (x : a || b -- (c >> d)) : (c >> a) || b -- d :=
-  fun k z => x (fun f => k (f z)).
 
-Definition ari : DP := Ec "ari".
-Definition ben : DP := Ec "ben".
+Definition ant3 (f : (DP >> S) || S -- (DP \ S)) :
+  (DP >> (S || (S[DP \ S] >> S) -- S)) || S -- (DP \ S).
+  intros k x K.
+  simpl in *.
+  refine (f (fun v => K (k v) (v, k)) x).
+Defined.
 
-Check ((lower (he <| (lift is |> lift muddy)))).
-Definition ari_knows_he_is_muddy : S || (DP >> S) >> S -- S := (bind (lift ari) <| (lift knows |> (pull (gbind (lift ((lower (he <| (lift is |> lift muddy))))))))).
+(* This version lowers the DP >> _ part to the ordinary binding position. *)
+Check (ant3 (lift knows |> (he <| (lift is |> lift muddy)))).
 
-Definition doesnt_know : ((DP \ S) / S) := fun x k => ~ (know k x).
 
-Definition ben_doesnt_know_this : ((DP >> S) >> S) || S -- S :=
-  (bind (lift ben) <| (lift doesnt_know |> this2)).
-  
-Eval compute in (lower (ari_knows_he_is_muddy <| (lift and |> ben_doesnt_know_this))).
+(* invariant *)
+Eval compute in (lower (lower (bind (lift ari) <| ant3 (lift knows |> (he <| (lift is |> lift muddy)))) <| (lift and |> (FOC alice <| did)))).
+
+
+(* *** covariant  *** *)
+
+
+(* We need a combinator that turns "knows he is muddy" into a simple (DP \ S), without any binding. *) 
+
+Definition fill_dp (f : (DP >> S) || S -- (DP \ S)) : S || S -- (DP \ S).
+  intro k.
+  simpl in *.
+  apply (k (fun x => f (fun v => v x) x)).
+Defined.
+
+(* same as ant3, but no variables *)
+Definition ant4 (f : S || S -- (DP \ S)) :
+  ((S || (S[DP \ S] >> S) -- S)) || S -- (DP \ S).
+  intros k K.
+  refine (f (fun v => K (k v) (v, k))).
+Defined.
+
+
+Eval compute in  (lower (lower (lift ari <| (ant4 (fill_dp (lift knows |> (he <| (lift is |> lift muddy)))))) <| (lift and |> (FOC alice <| did)))).
