@@ -1,26 +1,52 @@
 
-Require Import String. Import StringSyntax.
-From Ling Require Import BS.
+
+Require Import String. Import StringSyntax.          
+From Ling Require Import BSm2. 
 Import Ling.
+From Ling Require Import Parasitic.
+From Ling Require Import Covariance.
+
 
 (* John scratched his arm, and bob did too *)
 
 (* An analysis of sloppy identity that's similar to the covariance one *)
 
-(* TODO fix this *)
-
 Definition scratched : TV := mkTV "scratched".
 
 Parameter Of : DP -> DP -> DP.
+
+
+Definition his : (DP >> S) || S -- (DP / DP) :=
+  (fun k x => k (fun y => Of x y)).
+
+Definition arm : DP := e "arm".
+Definition bob : DP := e "bob".
+
+(* strict reading *)
+Eval compute in (lower ((lower (bind (lift john) <| ant3 (lift scratched |> (his |> lift arm))))
+         <| (lift and |> (FOC bob <| did)))).
+
+
+(* sloppy reading *)
+
+Eval compute in (lower ((lower (lift john <| (ant4 (fill_dp (lift scratched |> (his |> lift arm)))))) <| (lift and |> (FOC bob <| did)))).
+
+
+
+
+
+
+
+
+
+
+
 
 (* Generalized bind *)
 Definition gbind {a b c : Cat} (x : a || b -- c) : a || (c >> b) -- c :=
   fun k => x (fun e => k e e).
 
-Definition his : (DP >> S) || S -- (DP / DP) :=
-  (fun k x => k (fun y => Of x y)).
 
-Definition arm : DP := Ec "arm".
 
 Definition john_scratched_his_arm :=
   lower (bind (lift john) |> (lift scratched <| (his <| lift arm))).
