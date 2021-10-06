@@ -170,19 +170,21 @@ Module Ling.
     apply (k2 k (proj g)).
   Defined.
 
-  (* Example: John knows himself, and alice does too. *)
+  Parameter knows : (DP \ S) / S.
+
+  (* Example: John knows he is muddy, and alice does too. *)
 
   (* John knows himself *)
 
-  Definition john_knows_himself : <> |- S -| <> ;; DP ;; (<> ;; DP |- DP \ S -| <> ;; DP) :=
-    bind (lift john) <| capture (lift (tv "knows") |> he).
+  Definition john_knows_he_is_muddy : <> |- S -| <> ;; DP ;; (<> ;; DP |- DP \ S -| <> ;; DP) :=
+    bind (lift john) <| capture (lift knows |> (he <| lift (iv "muddy"))).
 
-  (* In the covariant version, alice is bound, so alice fills in the DP hole in "knows (her)self" *)
-  Eval compute in (lower (john_knows_himself <| lift and |> (bind (lift alice) <| run (retrieve _)))).
-  (* eet "knows" (e "alice") (e "alice") /\ eet "knows" (e "john") (e "john") *)
+  (* In the covariant version, alice is bound, so alice fills in the DP hole in "knows (s)he is muddy " *)
+  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> (bind (lift alice) <| run (retrieve _)))).
+  (* knows (et "muddy" (e "alice")) (e "alice") /\ knows (et "muddy" (e "john")) (e "john") *)
 
   (* In the invariant version, we do not bind alice, so john is still the most recent DP. *)
-  Eval compute in (lower (john_knows_himself <| lift and |> ((lift alice) <| run (retrieve _)))).
-  (* eet "knows" (e "john") (e "alice") /\ eet "knows" (e "john") (e "john") *)
+  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> ((lift alice) <| run (retrieve _)))).
+  (* knows (et "muddy" (e "john")) (e "alice") /\ knows (et "muddy" (e "john")) (e "john") *)
 
 End Ling.
