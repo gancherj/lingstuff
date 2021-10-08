@@ -6,6 +6,7 @@ Open Scope string.
   Inductive Ty :=
   | dp | s | ArrL : Ty -> Ty -> Ty
   | ArrR : Ty -> Ty -> Ty
+  | Pair : Ty -> Ty -> Ty
   | Comp : Ctx -> Ty -> Ctx -> Ty
   with
     Ctx := | Empty | Cons : Ctx -> Ty -> Ctx.
@@ -27,9 +28,10 @@ Module Ling.
     | s => Prop
     | ArrL x y => interpTy x -> interpTy y
     | ArrR x y => interpTy y -> interpTy x
+    | Pair x y => (interpTy x * interpTy y)%type
     | Comp G t D =>
       (interpCtx D -> interpTy t -> Prop) -> interpCtx G -> Prop
-                                                                            end
+    end
     with
     interpCtx (g : Ctx) := 
       match g with
@@ -46,7 +48,9 @@ Module Ling.
   Notation "<>" := (Empty).
   Notation "G ;; t" := (Cons G t) (at level 29, left associativity, format "G  ';;'  t").
 
-  Parameter (alt : Prop -> ((interpTy dp) -> Prop) -> (interpTy dp) -> Prop).
+  Notation "x ** y" := (Pair x y) (at level 40).
+
+  Parameter (alt : Prop -> ((dp) -> Prop) -> (dp) -> Prop).
 
 
   (* Some helper typeclasses.
@@ -156,6 +160,8 @@ Module Ling.
   Definition john := mk_dp "john".
   Definition alice := mk_dp "alice".
 
+  Definition add {G D:Ctx} {t :Ty} (c : G |- t -| D) (t':Ty) (x : t') : G |- t -| D ;; t' :=
+     fun k g => c (fun d y => k (d, x) y) g.
 
   (* The bind combinator adds the local type to the discource. *)
   Definition bind {G D: Ctx} {t : Ty} (c : G |- t -| D) : G |- t -| D ;; t :=
@@ -181,6 +187,8 @@ Module Ling.
   Definition capture {G D} {t} (c : G |- t -| D) :
     G |- t -| D ;; (G |- t -| D) :=
     fun k g => c (fun d x => k (d, c) x) g.
+
+  
 
 
   (* 'run' says that if you have a computation that returns another computation, you can extract the inner computation. 
@@ -216,5 +224,35 @@ Module Ling.
   (* In the invariant version, we do not bind alice, so john is still the most recent dp. *)
   Eval compute in (lower (john_knows_he_is_muddy <| lift and |> ((lift alice) <| run (retrieve _ 0)))).
   (* knows (et "muddy" (e "john")) (e "alice") /\ knows (et "muddy" (e "john")) (e "john") *)
+
+
+  (* This version of FOC doesn't take in a structured antecedent, 
+but instead takes in *two* antecedents. this can be adapted so as to not 
+get strange readings *)
+  Definition FOC {G G'} {I} `{Proj G I} i1 i2 `{GetCtx G i1 dp} `{GetCtx G i2 (I |- dp \ s -| I)} (c : G |- dp -| G') : G |- dp -| G'.
+    intros k g.
+    assert (j := recall G i1 _ g).
+    assert (pred :=
+                fun (x:dp) => (recall G i2 _) g (fun _ p => p x) (proj g)).
+    apply (c (fun o x => k o x /\ alt (pred j) pred x) g).
+  Defined.
+  
+  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> (FOC 1 0 (lift alice) <| run (retrieve _ 0)))).
+
+
+
+  
+
+
+(*
+  john kissed ben, and ALICE did too
+  
+want: 
+ 
+     (eet "kiss" (e "john") (e "ben") /\ eet "kiss" (e "alice") (e "ben")) /\
+       alt (eet "kiss" (e "john") (e "ben"))
+         (fun y : E => eet "kiss" y (e "ben")) (e "alice")
+*)
+  
 
 End Ling.
