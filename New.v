@@ -1,6 +1,14 @@
-Require Import String.
-Import StringSyntax.
 Require Import List.
+Require Import Strings.String.
+Import StringSyntax.
+Open Scope string.
+
+  Inductive Ty :=
+  | dp | s | ArrL : Ty -> Ty -> Ty
+  | ArrR : Ty -> Ty -> Ty
+  | Comp : Ctx -> Ty -> Ctx -> Ty
+  with
+    Ctx := | Empty | Cons : Ctx -> Ty -> Ctx.
 
 Module Ling.
   Parameter (E : Type).
@@ -12,19 +20,11 @@ Module Ling.
   Parameter (Knows : Prop -> E -> Prop).
   Parameter (know : E -> Prop -> Prop).
   Parameter (Mother : E -> E).      
-  
-
-  Inductive Ty :=
-  | DP | S | ArrL : Ty -> Ty -> Ty
-  | ArrR : Ty -> Ty -> Ty
-  | Comp : Ctx -> Ty -> Ctx -> Ty
-  with
-    Ctx := | Empty | Cons : Ctx -> Ty -> Ctx.
 
   Fixpoint interpTy (t : Ty) :=
     match t with
-    | DP => E
-    | S => Prop
+    | dp => E
+    | s => Prop
     | ArrL x y => interpTy x -> interpTy y
     | ArrR x y => interpTy y -> interpTy x
     | Comp G t D =>
@@ -46,7 +46,7 @@ Module Ling.
   Notation "<>" := (Empty).
   Notation "G ;; t" := (Cons G t) (at level 29, left associativity, format "G  ';;'  t").
 
-  Parameter (alt : Prop -> ((interpTy DP) -> Prop) -> (interpTy DP) -> Prop).
+  Parameter (alt : Prop -> ((interpTy dp) -> Prop) -> (interpTy dp) -> Prop).
 
 
   (* Some helper typeclasses.
@@ -63,16 +63,44 @@ Module Ling.
     fun g1t =>
       (proj (fst g1t), snd g1t).
 
-  (* This second one, Recall, selects a type from a given discourse, using the most recent one available. *)
-  Class Recall (G : Ctx) (t : Ty) := recall : G -> t.
-  Instance Recall_here G t : Recall (G ;; t) t := fun g => snd g.
-  Instance Recall_there G t1 t2 `{Recall G t1} : Recall (G ;; t2) t1 := fun g => recall (fst g).
+  Fixpoint getCtx (G: Ctx) (i : nat) : option Ty :=
+    match G with
+    | Empty => None
+    | Cons g' t =>
+      match i with
+      | 0 => Some t
+      | S i' => getCtx g' i' end end.
+
+  Class GetCtx G i t := getCtx_witness : getCtx G i = Some t.
+  Instance GetCtx_last G t : GetCtx (G ;; t) 0 t := eq_refl.
+  Instance GetCtx_next G t t2 i `{GetCtx G i t} : GetCtx (G ;; t2) (S i) t := @getCtx_witness G i t _.
+
+  Definition typeAt (G: Ctx) (i : nat) : Type :=
+    match getCtx G i with
+    | None => unit
+    | Some  t => t end.
+
+  Fixpoint recall' (G : Ctx) (i : nat) : interpCtx G -> typeAt G i.
+    destruct G.
+    apply (fun x => x).
+    destruct i.
+    apply (fun g => snd g).
+    apply (fun g => recall' G i (fst g)).
+  Defined.
+
+  Definition recall (G : Ctx) (i : nat) (t : Ty) `{GetCtx G i t} : interpCtx G -> t.
+    remember (recall' G i) as p.
+    clear Heqp.
+    unfold typeAt in p.
+    rewrite H in p.
+    apply p.
+  Defined.
 
   Definition lift {t : Ty} {G : Ctx} (x : t) : G |- t -| G := 
     fun k g => k g x.
 
   (* You can lower and evaluate any sentence that doesn't have any free variables in it. *)
-  Definition lower {D} (c : <> |- S -| D): S :=
+  Definition lower {D} (c : <> |- s -| D): s :=
     (c (fun _ p => p) tt).
 
   (* Lifting the arrow combinators to computations, just like 'cleft' and 'cright' as before. *)
@@ -91,16 +119,16 @@ Module Ling.
 
 
 
-  Definition tv s : (DP \ S) / DP := eet s.
-  Definition iv s : DP \ S := et s.
+  Definition tv st : (dp \ s) / dp := eet st.
+  Definition iv st : dp \ s := et st.
 
-  Definition everyone {G : Ctx} : G |- DP -| G :=
+  Definition everyone {G : Ctx} : G |- dp -| G :=
     fun k g => forall x, k g x. 
 
-  Definition someone {G : Ctx} : G |- DP -| G;;DP :=
+  Definition someone {G : Ctx} : G |- dp -| G;;dp :=
     fun k g => exists x, k (g, x) x. 
 
-  Definition everyone_sleeps : <> |- S -| <> :=
+  Definition everyone_sleeps : <> |- s -| <> :=
     everyone <| lift (iv "sleeps").
 
   Eval compute in (lower everyone_sleeps).
@@ -124,41 +152,43 @@ Module Ling.
                      (force someone
                     (fun s => everyone <| lift (tv "loves") |> s))).
 
-  Definition dp s : DP := e s.
-  Definition john := dp "john".
-  Definition alice := dp "alice".
+  Definition mk_dp s : dp := e s.
+  Definition john := mk_dp "john".
+  Definition alice := mk_dp "alice".
 
 
   (* The bind combinator adds the local type to the discource. *)
   Definition bind {G D: Ctx} {t : Ty} (c : G |- t -| D) : G |- t -| D ;; t :=
     (fun k g => c (fun d x => k (d, x) x) g).
 
-  (* If there is a DP available in the discourse G, 'he' selects the most recent one. 
+  (* If there is a dp available in the discourse G, 'he' selects the most recent one. 
    (This can be tweaked to account for features such as grammatical gender, number, etc ) *)
-  Definition he {G : Ctx} `{Recall G DP} : G |- DP -| G :=
-    (fun k g => k g (recall g)).
+
+  (* A more general version of 'he', but for arbitrary types t. *)
+  Definition retrieve {G} t i `{GetCtx G i t} : G |- t -| G :=
+    (fun k g => k g (recall G i t g)).
+
+  Definition he {G : Ctx} i `{GetCtx G i dp} : G |- dp -| G :=
+    retrieve dp i.
 
   (* 'weak' weakens the discourse. You are allowed to grow the input, and shrink the output. *)
   Definition weak G D {G' D'} {t} `{Proj G G'} `{Proj D' D} (c : G' |- t -| D') : G |- t -| D :=
     (fun k g => c (fun d' x => k (proj d') x) (proj g)).
 
-  Definition and : (S \ S) / S := fun x y => x /\ y.
+  Definition and : (s \ s) / s := fun x y => x /\ y.
 
   (* Capture takes a computation, and both 1) evaluates it; but 2) puts itself, unevaluated, onto the discourse *)
   Definition capture {G D} {t} (c : G |- t -| D) :
     G |- t -| D ;; (G |- t -| D) :=
     fun k g => c (fun d x => k (d, c) x) g.
 
-  (* A more general version of 'he', but for arbitrary types t. *)
-  Definition retrieve {G} t `{Recall G t} : G |- t -| G :=
-    fun k g => k g (recall g).
 
   (* 'run' says that if you have a computation that returns another computation, you can extract the inner computation. 
 
-   For example, consider "he is muddy", with type <> ;; DP |- S -| <>;; DP.
+   For example, consider "he is muddy", with type <> ;; dp |- s -| <>;; dp.
 
    If it is stored in a bigger context and recalled, 
-     you have something of type (bigger context) |- (<> ;; DP |- S -| <> ;; DP) -| (same bigger context). This allows you to move from this double-computation to the inner computation. 
+     you have something of type (bigger context) |- (<> ;; dp |- s -| <> ;; dp) -| (same bigger context). This allows you to move from this double-computation to the inner computation. 
 
 
 *)
@@ -170,21 +200,21 @@ Module Ling.
     apply (k2 k (proj g)).
   Defined.
 
-  Parameter knows : (DP \ S) / S.
+  Parameter knows : (dp \ s) / s.
 
   (* Example: John knows he is muddy, and alice does too. *)
 
   (* John knows himself *)
 
-  Definition john_knows_he_is_muddy : <> |- S -| <> ;; DP ;; (<> ;; DP |- DP \ S -| <> ;; DP) :=
-    bind (lift john) <| capture (lift knows |> (he <| lift (iv "muddy"))).
+  Definition john_knows_he_is_muddy : <> |- s -| <> ;; dp ;; (<> ;; dp |- dp \ s -| <> ;; dp) :=
+    bind (lift john) <| capture (lift knows |> (he 0 <| lift (iv "muddy"))).
 
-  (* In the covariant version, alice is bound, so alice fills in the DP hole in "knows (s)he is muddy " *)
-  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> (bind (lift alice) <| run (retrieve _)))).
+  (* In the covariant version, alice is bound, so alice fills in the dp hole in "knows (s)he is muddy " *)
+  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> (bind (lift alice) <| run (retrieve _ 1)))).
   (* knows (et "muddy" (e "alice")) (e "alice") /\ knows (et "muddy" (e "john")) (e "john") *)
 
-  (* In the invariant version, we do not bind alice, so john is still the most recent DP. *)
-  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> ((lift alice) <| run (retrieve _)))).
+  (* In the invariant version, we do not bind alice, so john is still the most recent dp. *)
+  Eval compute in (lower (john_knows_he_is_muddy <| lift and |> ((lift alice) <| run (retrieve _ 0)))).
   (* knows (et "muddy" (e "john")) (e "alice") /\ knows (et "muddy" (e "john")) (e "john") *)
 
 End Ling.
